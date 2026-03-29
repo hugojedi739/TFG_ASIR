@@ -1,5 +1,3 @@
-# TFG_ASIR
-Proyecto Fin ciclo Hugo Lopez
 # Bastionado Windows, Centralización WEF y Alertas Inteligentes
 
 Proyecto Final de Ciclo Superior — ASIR 2026  
