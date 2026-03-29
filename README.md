@@ -1,6 +1,6 @@
 # Bastionado Windows, Centralización WEF y Alertas Inteligentes
 
-Proyecto Final de Ciclo Superior — ASIR 2026  
+Proyecto Final de Ciclo Superior — ASIR 2026 
 Autor: Hugo Lopez
 
 ## Descripción
