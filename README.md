@@ -12,7 +12,7 @@ Un equipo cliente envía sus logs de seguridad a un servidor Windows Server 2022
 ## Tecnologías utilizadas
 
 - Windows Server 2022 (Active Directory + WEF Collector)
-- Windows 10/11 (cliente del dominio)
+- Windows 10 Pro (cliente del dominio)
 - Hyper-V (virtualización)
 - Windows Event Forwarding (WEF)
 - PowerShell
@@ -28,7 +28,19 @@ Un equipo cliente envía sus logs de seguridad a un servidor Windows Server 2022
 
 ## Estado del proyecto
 
-🟡 En desarrollo — inicio: marzo 2026
+🟡 En desarrollo — última actualización: abril 2026
+## Infraestructura desplegada
+
+- ✅ Hyper-V configurado con dos VMs
+- ✅ Windows Server 2022 instalado (TFG-Server)
+- ✅ Active Directory y dominio tfg.local configurado
+- ✅ Usuarios y grupos creados en AD
+- ✅ Política de auditoría configurada
+- ✅ Windows 10 Pro instalado (TFG-Cliente)
+- ✅ Cliente unido al dominio tfg.local
+- ⏳ WEF — pendiente
+- ⏳ Script PowerShell — pendiente
+- ⏳ Integración IA + Telegram — pendiente
 
 ## Requisitos para reproducir el entorno
 
