@@ -49,9 +49,9 @@ Un script PowerShell (en desarrollo) analizará los eventos críticos, los proce
 - ✅ GPO_WEF creada y vinculada al dominio
 - ✅ Cliente unido al dominio tfg.local
 - ✅ WEF configurado y funcionando — eventos reenviados verificados
-- ⏳ Script PowerShell de análisis — pendiente
-- ⏳ Integración API IA — pendiente
-- ⏳ Bot de Telegram — pendiente
+- ✅ Script PowerShell — Monitor-WEF.ps1 con detección de fuerza bruta y CSV
+- ✅ Integración API Claude — análisis semántico de eventos
+- ✅ Bot de Telegram — alertas automáticas con severidad
 
 ---
 
