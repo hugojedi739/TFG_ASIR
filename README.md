@@ -3,7 +3,7 @@
 **Proyecto Final de Ciclo Superior — ASIR 2026**
 * **Autor:** Hugo López Rodríguez
 * **Tutor:** Manuel Rico López
-* **Centro:** C.P.R. Liceo "La Paz" — A Coruña
+* **Centro:** C.P.R. Liceo La Paz A Coruña
 
 ## Descripción
 
@@ -11,7 +11,7 @@ Este proyecto es un sistema de monitorización y detección de amenazas centrali
 
 En el servidor, que actúa como Controlador de Dominio y colector central, un motor que he desarrollado en PowerShell procesa en segundo plano los eventos críticos (como el Event ID 4625 o 4720). El sistema analiza esta información semánticamente a través de la API de IA de Anthropic (Claude) y te envía una alerta automática por Telegram en cuanto detecta comportamientos sospechosos (intentos de fuerza bruta, creación de cuentas no autorizadas o escalada de privilegios).
 
-*Nota: Se incluye una versión alternativa del script que funciona sin dependencias de IA externa, pensada para operar de forma 100% local.*
+Nota: Se incluye una versión alternativa del script que funciona sin dependencias de IA externa, pensada para operar de forma 100% local.
 
 ## Tecnologías utilizadas
 
