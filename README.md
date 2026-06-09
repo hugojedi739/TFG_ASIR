@@ -3,15 +3,15 @@
 **Proyecto Final de Ciclo Superior — ASIR 2026**
 * **Autor:** Hugo López Rodríguez
 * **Tutor:** Manuel Rico López
-* **Centro:** C.P.R. Liceo La Paz A Coruña
+* **Centro:** C.P.R. Liceo "La Paz" — A Coruña
 
 ## Descripción
 
-Sistema de monitorización y detección de amenazas centralizado (SIEM ligero), desarrollado íntegramente sobre entorno Windows a coste cero. Un equipo cliente Windows 10 Pro unido al dominio `tfg.local` envía sus eventos de seguridad automáticamente a un servidor Windows Server 2022 mediante Windows Event Forwarding (WEF). 
+Este proyecto es un sistema de monitorización y detección de amenazas centralizado (un SIEM ligero), desarrollado íntegramente sobre un entorno Windows y a coste cero. Funciona de la siguiente manera: un equipo cliente (Windows 10 Pro) unido al dominio `tfg.local` envía sus eventos de seguridad de forma automática a un servidor Windows Server 2022 utilizando Windows Event Forwarding (WEF). 
 
-El servidor actúa como Controlador de Dominio y colector central de eventos. Un motor desarrollado en PowerShell procesa en segundo plano los eventos críticos (Event ID 4625, 4720, etc.), los analiza semánticamente mediante la API de IA de Anthropic (Claude) y genera alertas automáticas procesadas en Telegram cuando detecta comportamientos sospechosos (intentos de fuerza bruta, creación de usuarios no autorizados o escalada de privilegios).
+En el servidor, que actúa como Controlador de Dominio y colector central, un motor que he desarrollado en PowerShell procesa en segundo plano los eventos críticos (como el Event ID 4625 o 4720). El sistema analiza esta información semánticamente a través de la API de IA de Anthropic (Claude) y te envía una alerta automática por Telegram en cuanto detecta comportamientos sospechosos (intentos de fuerza bruta, creación de cuentas no autorizadas o escalada de privilegios).
 
-*Nota: Se incluye una versión alternativa del script sin dependencias de IA externa para operar de forma 100% local.*
+*Nota: Se incluye una versión alternativa del script que funciona sin dependencias de IA externa, pensada para operar de forma 100% local.*
 
 ## Tecnologías utilizadas
 
@@ -22,14 +22,14 @@ El servidor actúa como Controlador de Dominio y colector central de eventos. Un
 *   **Windows Event Forwarding (WEF) & WinRM** (Suscripción Source-Initiated)
 *   **PowerShell 5.1** (Motor de correlación y automatización)
 *   **API de IA (Anthropic Claude - Modelo Haiku)** (Análisis semántico)
-*   **Telegram Bot API** (Alertado Push)
+*   **Telegram Bot API** (Alertas push)
 
 ## Estructura del repositorio
 
-*   `/scripts` → Scripts PowerShell del sistema (`Monitor_WEF.ps1` y versión `Lite`).
-*   `/config` → Archivos de configuración (`suscripcion_wef.xml`, `config.json`, `setup.bat`).
+*   `/scripts` → Scripts en PowerShell del sistema (`Monitor_WEF.ps1` y su versión `Lite`).
+*   `/config` → Archivos de configuración necesarios (`suscripcion_wef.xml`, `config.json`, `setup.bat`).
 *   `/docs` → Memoria oficial del proyecto y manuales.
-*   `/capturas` → Evidencias y capturas de pantalla de la configuración en laboratorio.
+*   `/capturas` → Evidencias y capturas de pantalla del entorno de laboratorio.
 
 ## Estado del proyecto
 
@@ -37,24 +37,24 @@ El servidor actúa como Controlador de Dominio y colector central de eventos. Un
 
 ## Infraestructura desplegada
 
-- [x] Hyper-V configurado con dos VMs en red interna.
-- [x] Windows Server 2022 Standard instalado (`TFG-Server`) — **IP: 192.160.0.10**
-- [x] Windows 10 Pro instalado (`TFG-Cliente`) — **IP: 192.160.0.20**
-- [x] Active Directory y dominio `tfg.local` configurado (Nivel funcional 2016).
-- [x] Usuarios y grupos creados en AD jerárquicamente (`GRP_Administradores`, `GRP_Trabajadores`).
-- [x] Política de auditoría forzada mediante GPO para registro de inicios de sesión fallidos.
-- [x] Directiva `GPO_WEF` creada y vinculada al dominio (Permisos y WinRM).
-- [x] Cliente unido exitosamente al dominio `tfg.local`.
-- [x] WEF configurado (Source-Initiated) y centralizando logs en `ForwardedEvents`.
-- [x] Script PowerShell optimizado para ráfagas (3000 eventos/ciclo) y persistencia en CSV local.
-- [x] Integración segura (TLS 1.2) con API de Anthropic Claude y Telegram.
+- [x] Entorno virtualizado en Hyper-V con dos VMs conectadas en red interna.
+- [x] Servidor Windows Server 2022 Standard (`TFG-Server`) — **IP: 192.160.0.10**
+- [x] Equipo Windows 10 Pro (`TFG-Cliente`) — **IP: 192.160.0.20**
+- [x] Active Directory y dominio `tfg.local` operativos (Nivel funcional 2016).
+- [x] Estructura de usuarios y grupos en AD (`GRP_Administradores`, `GRP_Trabajadores`).
+- [x] Política de auditoría (GPO) forzada para registrar inicios de sesión fallidos.
+- [x] Directiva `GPO_WEF` desplegada en el dominio para gestionar permisos y WinRM.
+- [x] Cliente correctamente unido al dominio `tfg.local`.
+- [x] Servicio WEF (Source-Initiated) capturando logs centralizados en `ForwardedEvents`.
+- [x] Script en PowerShell optimizado para manejar ráfagas (3000 eventos/ciclo) y guardar el histórico en CSV local.
+- [x] Integración segura (TLS 1.2) con las APIs de Anthropic Claude y Telegram.
 - [x] Automatización total del servicio mediante el Programador de Tareas (bucle de 5 minutos desatendido).
 
 ## Requisitos e Instalación
 
-El despliegue está automatizado para entornos Windows Server. 
+El despliegue está preparado para automatizarse fácilmente en entornos Windows Server:
 
-1. Configurar las variables de las APIs en `config.json`.
-2. Ejecutar el script `setup.bat` con privilegios de Administrador para crear las rutas de logs, importar la suscripción XML y registrar la tarea programada.
+1. Configura las variables de las APIs en el archivo `config.json`.
+2. Ejecuta el script `setup.bat` con privilegios de Administrador. Esto creará las rutas de los logs, importará la suscripción XML y registrará la tarea programada.
 
-Para obtener instrucciones detalladas sobre la arquitectura y la inyección de datos de prueba, consultar el **Manual del Administrador** en el directorio `/docs`.
+Para obtener instrucciones más detalladas sobre la arquitectura y cómo inyectar datos de prueba, puedes consultar el **Manual del Administrador** dentro de la carpeta `/docs`
