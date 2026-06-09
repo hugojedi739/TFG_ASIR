@@ -1,16 +1,17 @@
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 # VARIABLES GLOBALES Y CREDENCIALES
 
-$ApiKey = "INTRODUCE_TU_API_KEY"
+$ApiKey = "API" 
 $ApiUrl = "https://api.anthropic.com/v1/messages"
 
 # Credenciales del BotFather (Telegram)
-$TelegramToken = "INTRODUCE_TU_TOKEN"
-$TelegramChatId = "951741300"
+$TelegramToken = ""
+$TelegramChatId = ""
 
 # Configuración de lectura WEF
 $LogName = "ForwardedEvents" 
 # Leemos de 200 en 200 para no saturar la RAM del servidor virtual
-$MaxEventos = 200 
+$MaxEventos = 3000 
 $RutaCSV = "C:\Scripts\alertas.csv"
 
 # Array con los Event IDs que nos interesa vigilar (Fuerza bruta, grupos admin, etc.)
