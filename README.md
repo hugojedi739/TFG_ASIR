@@ -3,7 +3,7 @@
 **Proyecto Final de Ciclo Superior — ASIR 2026**
 * **Autor:** Hugo López Rodríguez
 * **Tutor:** Manuel Rico López
-* **Centro:** C.P.R. Liceo "La Paz" — A Coruña
+* **Centro:** C.P.R. Liceo La Paz A Coruña
 
 ## Descripción
 
