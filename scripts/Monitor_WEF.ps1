@@ -1,87 +1,134 @@
-# Canal donde llegan los eventos del cliente y cuantos eventos leemos de golpe
-$LogName = "ForwardedEvents" 
-$MaxEventos = 200
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# ID de eventos que consideramos peligrosos
-# 4625=login fallido, 4720=usuario creado, 4728=añadido a grupo admin
-# 4648=login con credenciales explícitas, 4719=cambio política auditoría
+# VARIABLES GLOBALES Y CREDENCIALES
+
+# Credenciales del BotFather (Telegram)
+$TelegramToken = ""
+$TelegramChatId = ""
+
+# Configuración de lectura WEF
+$LogName = "ForwardedEvents" 
+# Leemos de 200 en 200 para no saturar la RAM del servidor virtual
+$MaxEventos = 3000 
+$RutaCSV = "C:\Scripts\alertas.csv"
+
+# Array con los Event IDs que nos interesa vigilar (Fuerza bruta, grupos admin, etc.)
 $EventosCriticos = @(4625, 4720, 4728, 4732, 4756, 4648, 4719, 4964)
 
-# Leer eventos del canal ForwardedEvents
-Write-Host "Leyendo eventos de $LogName..." -ForegroundColor Cyan
+
+# FUNCIONES DE CONEXIÓN A APIS EXTERNAS
+
+function Send-AlertaTelegram {
+    param([string]$Mensaje)
+    
+    $TelegramUrl = "https://api.telegram.org/bot$TelegramToken/sendMessage"
+    
+    # Limpiamos el mensaje de caracteres especiales para evitar problemas de encoding
+    $MensajeLimpio = $Mensaje -replace '[áàäâ]','a' -replace '[éèëê]','e' -replace '[íìïî]','i' -replace '[óòöô]','o' -replace '[úùüû]','u' -replace '[ÁÀÄÂ]','A' -replace '[ÉÈËÊ]','E' -replace '[ÍÌÏÎ]','I' -replace '[ÓÒÖÔ]','O' -replace '[ÚÙÜÛ]','U' -replace '[ñ]','n' -replace '[Ñ]','N'
+
+    $BodyObj = @{
+        chat_id = $TelegramChatId
+        text    = $MensajeLimpio
+    }
+    $BodyJson = [System.Text.Encoding]::UTF8.GetString(
+        [System.Text.Encoding]::UTF8.GetBytes(
+            ($BodyObj | ConvertTo-Json -Compress)
+        )
+    )
+
+    try {
+        Invoke-RestMethod -Uri $TelegramUrl -Method Post `
+            -ContentType "application/json; charset=utf-8" `
+            -Body ([System.Text.Encoding]::UTF8.GetBytes($BodyJson)) | Out-Null
+    } catch {
+        Write-Host "[!] Error al enviar mensaje a Telegram." -ForegroundColor Red
+    }
+}
+
+
+# LECTURA DE EVENTOS Y FILTRADO BASE 
+
+Write-Host "[*] Iniciando monitorización WEF..." -ForegroundColor Cyan
+Write-Host "[*] Consultando últimos $MaxEventos eventos del canal $LogName..." -ForegroundColor Cyan
+
+# SilentlyContinue evita letras rojas feas si el registro está vacío
 $Eventos = Get-WinEvent -LogName $LogName -MaxEvents $MaxEventos -ErrorAction SilentlyContinue
 
 if ($Eventos -eq $null) {
-    Write-Host "No hay eventos en $LogName" -ForegroundColor Yellow
+    Write-Host "[i] El canal de eventos está vacío actualmente." -ForegroundColor Yellow
     exit
 }
 
-Write-Host "Total eventos leídos: $($Eventos.Count)" -ForegroundColor Green
-
-# Filtramos solo los que nos interesan
+# Filtramos usando el array de IDs
 $EventosFiltrados = $Eventos | Where-Object { $EventosCriticos -contains $_.Id }
-Write-Host "Eventos críticos encontrados: $($EventosFiltrados.Count)" -ForegroundColor Red
 
-# Mostramos el detalle de cada uno
-foreach ($Evento in $EventosFiltrados) {
-    Write-Host "----------------------------------------" -ForegroundColor Yellow
-    Write-Host "Event ID : $($Evento.Id)" -ForegroundColor Red
-    Write-Host "Fecha    : $($Evento.TimeCreated)" -ForegroundColor White
-    Write-Host "Equipo   : $($Evento.MachineName)" -ForegroundColor White
-    Write-Host "Detalle  : $($Evento.Message.Substring(0, [Math]::Min(150, $Evento.Message.Length)))" -ForegroundColor White
+if ($EventosFiltrados.Count -eq 0) {
+    Write-Host "[+] No se han detectado eventos críticos en esta pasada." -ForegroundColor Green
+} else {
+    Write-Host "[!] Se han encontrado $($EventosFiltrados.Count) eventos sospechosos." -ForegroundColor Red
 }
 
-# Detección de fuerza bruta
-# Si un usuario tiene más de 3 intentos fallidos seguidos, es sospechoso
-Write-Host "`n=== ANÁLISIS DE FUERZA BRUTA ===" -ForegroundColor Cyan
 
+# MOTOR DE DETECCION ATAQUE DE FUERZA BRUTA
+
+# Si hay logins fallidos (4625), los analizamos
 $LoginsFallidos = $EventosFiltrados | Where-Object { $_.Id -eq 4625 }
 
-$Agrupados = $LoginsFallidos | Group-Object { 
-    try { $_.Properties[5].Value } catch { "Desconocido" }
-} | Where-Object { $_.Count -ge 3 }
+if ($LoginsFallidos) {
+    Write-Host "`n[>>>] Iniciando módulo de análisis de Fuerza Bruta..." -ForegroundColor Cyan
+    
+    # Agrupamos por nombre de usuario (Propiedad 5 del log de Windows)
+    $Agrupados = $LoginsFallidos | Group-Object { 
+        try { $_.Properties[5].Value } catch { "Usuario_Desconocido" }
+    } | Where-Object { $_.Count -ge 3 } # Umbral de 3 intentos para considerarlo ataque
 
-if ($Agrupados.Count -eq 0) {
-    Write-Host "No se detectaron patrones de fuerza bruta" -ForegroundColor Green
-} else {
-    foreach ($Grupo in $Agrupados) {
-        Write-Host "ADVERTECIA: POSIBLE FUERZA BRUTA detectada:" -ForegroundColor Red
-        Write-Host "Usuario: $($Grupo.Name)" -ForegroundColor Yellow
-        Write-Host "Intentos fallidos: $($Grupo.Count)" -ForegroundColor Yellow
+    if ($Agrupados.Count -eq 0) {
+        Write-Host "[+] Logins fallidos detectados, pero no superan el umbral de alerta (Falsos positivos)." -ForegroundColor Green
+    } else {
+        foreach ($Grupo in $Agrupados) {
+            Write-Host "[!] ALERTA: Patrón de fuerza bruta detectado contra la cuenta: $($Grupo.Name)" -ForegroundColor Red
+            Write-Host "[i] Intentos registrados: $($Grupo.Count)" -ForegroundColor Yellow
+            
+            # Generamos la alerta estructurada de forma estática (Sin IA)
+            $MensajeAlerta = "SEVERIDAD: ALTO`nCAUSA: Posible ataque de fuerza bruta. El usuario $($Grupo.Name) ha acumulado $($Grupo.Count) intentos fallidos de inicio de sesion consecutivos.`nRECOMENDACION: Bloquear temporalmente la cuenta, contactar al usuario y verificar el equipo origen.`nINTERVENCION HUMANA: SI"
+            
+            Write-Host "[*] Emitiendo notificación push vía Telegram..." -ForegroundColor Cyan
+            Send-AlertaTelegram -Mensaje $MensajeAlerta
+            
+            Write-Host "[+] Notificación enviada con éxito." -ForegroundColor Green
+        }
     }
 }
 
-# Guardar alertas en CSV para tener historial
-# El archivo se crea en: C:\Scripts\alertas.csv
-$RutaCSV = "C:\Scripts\alertas.csv"
 
-# Si no existe el CSV lo creamos con cabeceras
-if (-not (Test-Path $RutaCSV)) {
-    "Fecha,EventID,Equipo,Usuario,Descripcion,TipoAlerta" | Out-File $RutaCSV -Encoding UTF8
-}
+# EXPORTAR HISTORIAL A CSV
 
-# Guardamos cada evento crítico en el CSV
-foreach ($Evento in $EventosFiltrados) {
-    $Fecha = $Evento.TimeCreated.ToString("yyyy-MM-dd HH:mm:ss")
-    $EventID = $Evento.Id
-    $Equipo = $Evento.MachineName
-    $Usuario = try { $Evento.Properties[5].Value } catch { "Desconocido" }
-    
-    # Comprobamos que el mensaje no sea null antes de procesarlo
-    $MensajeRaw = if ($Evento.Message) { $Evento.Message } else { "Sin descripcion" }
-    $Descripcion = $MensajeRaw.Substring(0, [Math]::Min(100, $MensajeRaw.Length)) -replace "`r`n"," " -replace "`n"," " -replace "`r"," " -replace ","," "
-    
-    # Determinar tipo de alerta según Event ID
-    $TipoAlerta = switch ($EventID) {
-        4625 { "Login fallido" }
-        4720 { "Usuario creado" }
-        4728 { "Añadido a grupo admin" }
-        4648 { "Credenciales explícitas" }
-        4719 { "Cambio política auditoría" }
-        default { "Evento crítico" }
+if ($EventosFiltrados.Count -gt 0) {
+    # Comprobamos si el fichero existe para crear la cabecera o simplemente añadir
+    if (-not (Test-Path $RutaCSV)) {
+        "Fecha,EventID,Equipo,Usuario,Descripcion,TipoAlerta" | Out-File $RutaCSV -Encoding UTF8
     }
-    
-    "$Fecha,$EventID,$Equipo,$Usuario,$Descripcion,$TipoAlerta" | Out-File $RutaCSV -Append -Encoding UTF8
-}
 
-Write-Host "`nAlertas guardadas en $RutaCSV" -ForegroundColor Cyan
+    foreach ($Evento in $EventosFiltrados) {
+        $Fecha = $Evento.TimeCreated.ToString("yyyy-MM-dd HH:mm:ss")
+        $EventID = $Evento.Id
+        $Equipo = $Evento.MachineName
+        $Usuario = try { $Evento.Properties[5].Value } catch { "Desconocido" }
+        
+        # Limpieza intensiva de saltos de línea y comas para no romper el CSV
+        $MensajeRaw = if ($Evento.Message) { $Evento.Message } else { "Log sin descripción" }
+        $Descripcion = $MensajeRaw.Substring(0, [Math]::Min(100, $MensajeRaw.Length)) -replace "`r`n"," " -replace "`n"," " -replace "`r"," " -replace ","," "
+        
+        $TipoAlerta = switch ($EventID) {
+            4625 { "Login fallido" }
+            4720 { "Usuario creado" }
+            4728 { "Escalada privilegios admin" }
+            4648 { "Uso de credenciales explícitas" }
+            4719 { "Modificación política auditoría" }
+            default { "Evento crítico genérico" }
+        }
+        
+        "$Fecha,$EventID,$Equipo,$Usuario,$Descripcion,$TipoAlerta" | Out-File $RutaCSV -Append -Encoding UTF8
+    }
+    Write-Host "`nHistorial actualizado localmente en: $RutaCSV" -ForegroundColor Cyan
+}
